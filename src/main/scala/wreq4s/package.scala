@@ -1,24 +1,13 @@
 import cats.effect.IO
 import io.circe.{Decoder, Json, JsonObject}
-import monocle.{Lens, Optional, Traversal}
+import monocle.{Lens, Optional}
 import monocle.macros.GenLens
 import io.circe.optics._
-import monocle.function.At
 import monocle.function.Index
 
 import scala.language.higherKinds
 
 package object wreq4s extends JsonOptics with JsonObjectOptics {
-
-//  private implicit final lazy val jsonObjectAt: At[JsonObject, String, Option[Json]] =
-//    new At[JsonObject, String, Option[Json]] {
-//      final def at(field: String): Lens[JsonObject, Option[Json]] =
-//        Lens[JsonObject, Option[Json]](_.apply(field))(optVal =>
-//          obj => optVal.fold(obj.remove(field))(value => obj.add(field, value))
-//        )
-//    }
-//
-//  private implicit final lazy val jsonObjectIndex: Index[JsonObject, String, Json] = Index.fromAt[JsonObject, String, Json]
 
   implicit class Syntax[A](a: A) {
     // This is called ^. in Haskell but that's not a valid function name with . in Scala
@@ -44,6 +33,11 @@ package object wreq4s extends JsonOptics with JsonObjectOptics {
 
   val statusMessage: Lens[ResponseStatus, String] = GenLens[ResponseStatus](_.message)
 
+  def responseHeader[A](name: String): Optional[Response[A], String] =
+    Optional[Response[A], String](resp =>
+      resp.headers.collectFirst { case (n, value) if n == name.toLowerCase => value }
+    )(value => response => response.copy(headers = (name, value) :: response.headers))
+
   val defaults: Options = Options.defaults
 
   def param(key: String): Lens[Options, List[String]] =
@@ -54,6 +48,17 @@ package object wreq4s extends JsonOptics with JsonObjectOptics {
         val ps = values.map(v => (key, v))
         val filtered = opts.params.filterNot(_._1 == key)
         opts.copy(params = ps ::: filtered)
+      }
+    )
+
+  def header(key: String): Lens[Options, List[String]] =
+    Lens[Options, List[String]](
+      opts => opts.headers.collect { case (`key`, value) => value }
+    )(values =>
+      opts => {
+        val hs = values.map(v => (key, v))
+        val filtered = opts.headers.filterNot(_._1 == key)
+        opts.copy(headers = hs ::: filtered)
       }
     )
 

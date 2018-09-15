@@ -36,4 +36,13 @@ object Example extends App {
     println(io.unsafeRunSync())
   }
 
+  {
+    val opts = defaults & header("Accept") ~ List("application/json")
+    val io = for {
+      response <- Wreq.getWith(opts)("http://httpbin.org/get")
+    } yield response ^? responseHeader("content-type")
+
+    println(io.unsafeRunSync())
+  }
+
 }

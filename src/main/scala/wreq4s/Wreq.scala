@@ -2,17 +2,12 @@ package wreq4s
 
 import cats.effect.IO
 import okhttp3.Request
-import okhttp3.{Response => OkResponse}
+import scala.collection.JavaConverters._
 
 object Wreq {
 
-  def get(url: String)(implicit session: Session = new OneOffSession): IO[Response[String]] = IO {
-    val request = new Request.Builder().url(url).build
-
-    val okResp = session.client.newCall(request).execute
-    val status = ResponseStatus(okResp.code(), okResp.message())
-    Response(status, okResp.body.string)
-  }
+  def get(url: String)(implicit session: Session = new OneOffSession): IO[Response[String]] =
+    getWith(defaults)(url)
 
   def getWith(opts: Options)(url: String)(implicit session: Session = new OneOffSession): IO[Response[String]] = IO {
     // TODO proper URL building, escaping of params, etc.
@@ -21,8 +16,14 @@ object Wreq {
     val request = new Request.Builder().url(urlWithParams).build
 
     val okResp = session.client.newCall(request).execute
-    val status = ResponseStatus(okResp.code(), okResp.message())
-    Response(status, okResp.body.string)
+    val body = okResp.body.string
+    val status = ResponseStatus(okResp.code, okResp.message)
+    val headers =
+      for {
+        name <- okResp.headers.names.asScala
+        value <- okResp.headers.values(name).asScala
+      } yield (name.toLowerCase, value)
+    Response(body, status, headers.toList)
   }
 
 }
