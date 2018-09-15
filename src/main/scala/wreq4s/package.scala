@@ -1,4 +1,5 @@
-import io.circe.{Json, JsonObject}
+import cats.effect.IO
+import io.circe.{Decoder, Json, JsonObject}
 import monocle.{Lens, Optional, Traversal}
 import monocle.macros.GenLens
 import io.circe.optics._
@@ -7,17 +8,17 @@ import monocle.function.Index
 
 import scala.language.higherKinds
 
-package object wreq4s {
+package object wreq4s extends JsonOptics with JsonObjectOptics {
 
-  private implicit final lazy val jsonObjectAt: At[JsonObject, String, Option[Json]] =
-    new At[JsonObject, String, Option[Json]] {
-      final def at(field: String): Lens[JsonObject, Option[Json]] =
-        Lens[JsonObject, Option[Json]](_.apply(field))(optVal =>
-          obj => optVal.fold(obj.remove(field))(value => obj.add(field, value))
-        )
-    }
-
-  private implicit final lazy val jsonObjectIndex: Index[JsonObject, String, Json] = Index.fromAt[JsonObject, String, Json]
+//  private implicit final lazy val jsonObjectAt: At[JsonObject, String, Option[Json]] =
+//    new At[JsonObject, String, Option[Json]] {
+//      final def at(field: String): Lens[JsonObject, Option[Json]] =
+//        Lens[JsonObject, Option[Json]](_.apply(field))(optVal =>
+//          obj => optVal.fold(obj.remove(field))(value => obj.add(field, value))
+//        )
+//    }
+//
+//  private implicit final lazy val jsonObjectIndex: Index[JsonObject, String, Json] = Index.fromAt[JsonObject, String, Json]
 
   implicit class Syntax[A](a: A) {
     // This is called ^. in Haskell but that's not a valid function name with . in Scala
@@ -62,5 +63,12 @@ package object wreq4s {
   val json: Optional[String, Json] = Optional[String, Json](
     string => io.circe.parser.parse(string).toOption
   )(_ => json => json)
+
+  def asJSON[A: Decoder](response: Response[String]): IO[Response[A]] = {
+    io.circe.parser.decode[A](response.body) match {
+      case Left(e) => IO.raiseError(e)
+      case Right(a) => IO.pure(response.copy(body = a))
+    }
+  }
 
 }

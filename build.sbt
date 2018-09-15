@@ -9,6 +9,7 @@ libraryDependencies ++= Seq(
   "com.squareup.okhttp3" % "okhttp" % "3.11.0",
   "com.github.julien-truffaut" %%  "monocle-core"  % monocleVersion,
   "com.github.julien-truffaut" %%  "monocle-macro" % monocleVersion,
+  "org.scalaz" %% "scalaz-core" % "7.2.26", // for Monocle (even the -cats version has dependencies on scalaz)
   "io.circe" %% "circe-core" % circeVersion,
   "io.circe" %% "circe-generic" % circeVersion,
   "io.circe" %% "circe-parser" % circeVersion,
